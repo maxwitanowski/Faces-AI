@@ -4,26 +4,26 @@ import React, { useRef, useEffect, useState } from 'react';
 export const DEFAULT_FACE_CONFIG = {
     // Eye settings
     eyeSpacing: 75,
-    eyeY: -32,
-    eyeWidth: 40,
-    eyeHeight: 26,
+    eyeY: -24,
+    eyeWidth: 44,
+    eyeHeight: 30,
     pupilSize: 7,
-    
+
     // Brow settings
-    browY: -83,
-    browLength: 48,
+    browY: -74,
+    browLength: 54,
     browThickness: 4,
-    browInnerAngleMult: -10,
-    browOuterAngleMult: 14,
-    
+    browInnerAngleMult: -36,
+    browOuterAngleMult: 16,
+
     // Mouth settings
     mouthY: 58,
-    mouthWidth: 55,
+    mouthWidth: 61,
     mouthThickness: 4,
-    smileCurveMult: 58,
+    smileCurveMult: 45,
     mouthOpenHeight: 51,
     frownCornerDrop: 10,
-    
+
     // Thinking animation
     thinkingSpeed: 1.2,
     thinkingRangeX: 12,
@@ -31,17 +31,16 @@ export const DEFAULT_FACE_CONFIG = {
     thinkingBaseY: 8,
     thinkingFreqX: 2.5,
     thinkingFreqY: 1.7,
-    
+
     // General
     lineThickness: 3,
-    maxScale: 1.0,
-    
-    // Playful movement settings
-    idleMovement: 1.0,      // How much the face moves around when idle
-    talkBrowBounce: 1.0,    // How much eyebrows bounce when talking
-    talkHeadBob: 1.0,       // How much head bobs when talking
-};
+    maxScale: 1,
 
+    // Playful movement settings
+    idleMovement: 1,
+    talkBrowBounce: 1,
+    talkHeadBob: 1,
+};
 const Face2D = ({ 
     warmth = 0,
     energy = 0,
