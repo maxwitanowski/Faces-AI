@@ -8,7 +8,17 @@
     "dev": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
     "build": "vite build",
     "start": "electron .",
-    "package": "vite build && electron-builder --dir --publish never"
+    "build:python": "python build_python.py",
+    "build:python:yolo": "python build_python.py yolo_tracker",
+    "build:python:kokoro": "python build_python.py kokoro_tts",
+    "build:python:whisper": "python build_python.py local_whisper",
+    "build:python:piper": "python build_python.py piper_tts",
+    "build:all": "npm run build:python && npm run build && npm run package:win",
+    "package": "vite build && electron-builder --dir --publish never",
+    "package:win": "vite build && electron-builder --win --dir --publish never",
+    "package:mac": "vite build && electron-builder --mac --dir --publish never",
+    "package:linux": "vite build && electron-builder --linux --dir --publish never",
+    "package:all": "vite build && electron-builder --win --mac --linux --dir --publish never"
   },
   "keywords": [],
   "author": "",
@@ -17,14 +27,31 @@
     "appId": "com.facesai.app",
     "productName": "Faces AI",
     "directories": {
-      "output": "C:/FacesAI_v2"
+      "output": "C:/Users/maxwi/OneDrive/Desktop/Coding Projects/Faces/builds"
     },
     "files": [
       "dist/**/*",
       "electron/**/*",
       "public/**/*",
       "python/**/*",
-      "!python/__pycache__/**/*"
+      "!python/__pycache__/**/*",
+      "!python-dist/**/*",
+      "!python-build/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "python-dist/",
+        "to": "python/",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "yolov11n.pt",
+        "to": "models/yolov11n.pt"
+      },
+      {
+        "from": "yolov8n.pt",
+        "to": "models/yolov8n.pt"
+      }
     ],
     "asar": true,
     "asarUnpack": [
@@ -32,7 +59,18 @@
       "node_modules/electron-store/**/*"
     ],
     "win": {
-      "target": "dir"
+      "target": "dir",
+      "icon": "build/icon.ico",
+      "sign": false,
+      "signAndEditExecutable": false
+    },
+    "mac": {
+      "target": "dir",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": "dir",
+      "icon": "build/icon.png"
     }
   },
   "dependencies": {
@@ -60,6 +98,7 @@
     "cross-env": "^7.0.3",
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8",
+    "rcedit": "^5.0.2",
     "vite": "^5.4.11",
     "wait-on": "^8.0.5"
   }

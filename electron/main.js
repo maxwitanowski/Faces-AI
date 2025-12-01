@@ -14,6 +14,57 @@ const store = new Store();
 let mainWindow;
 let pythonProcess = null;
 
+// ============================================
+// Bundled Python Executable Path Helpers
+// ============================================
+
+/**
+ * Get path to a bundled Python executable
+ * In development: returns null (use python interpreter)
+ * In production: returns path to PyInstaller-built executable
+ */
+function getBundledExePath(scriptName) {
+    if (app.isPackaged) {
+        const ext = process.platform === 'win32' ? '.exe' : '';
+        return path.join(process.resourcesPath, 'python', scriptName, scriptName + ext);
+    }
+    return null;
+}
+
+/**
+ * Get path to a model file
+ */
+function getModelPath(modelName) {
+    if (app.isPackaged) {
+        return path.join(process.resourcesPath, 'models', modelName);
+    }
+    return path.join(__dirname, '..', modelName);
+}
+
+/**
+ * Spawn a Python process - uses bundled exe in production, python interpreter in dev
+ */
+function spawnPythonProcess(scriptName, scriptPath, options = {}) {
+    const bundledExe = getBundledExePath(scriptName);
+
+    if (bundledExe && fs.existsSync(bundledExe)) {
+        // Production: use bundled executable
+        console.log(`[${scriptName}] Using bundled executable: ${bundledExe}`);
+        return spawn(bundledExe, [], {
+            ...options,
+            env: {
+                ...process.env,
+                MODEL_PATH: getModelPath('yolov11n.pt'),
+                ...options.env
+            }
+        });
+    } else {
+        // Development: use Python interpreter
+        console.log(`[${scriptName}] Using Python interpreter`);
+        return spawn('python', ['-u', scriptPath], options);
+    }
+}
+
 // Broadcast sessions update to all windows
 function broadcastSessionsUpdate() {
     try {
@@ -33,12 +84,10 @@ function broadcastSessionsUpdate() {
 function startPythonHandler() {
     if (pythonProcess) return;
 
-    const pythonPath = 'python';
-    // We'll use a new script that uses faster-whisper
     const scriptPath = path.join(__dirname, '../python/local_whisper.py');
-    
+
     console.log("Starting High-Performance Local Whisper Process...");
-    pythonProcess = spawn(pythonPath, ['-u', scriptPath]);
+    pythonProcess = spawnPythonProcess('local_whisper', scriptPath);
 
     pythonProcess.stdout.on('data', (data) => {
         const lines = data.toString().split('\n');
@@ -80,15 +129,14 @@ const YOLO_URL = `http://localhost:${YOLO_PORT}`;
 
 async function startYoloTracker() {
     if (yoloProcess) return true;
-    
-    const pythonPath = 'python';
+
     const scriptPath = path.join(__dirname, '../python/yolo_tracker.py');
-    
+
     console.log("[YOLO] Starting YOLO Tracking Server...");
-    
+
     return new Promise((resolve) => {
         try {
-            yoloProcess = spawn(pythonPath, ['-u', scriptPath], {
+            yoloProcess = spawnPythonProcess('yolo_tracker', scriptPath, {
                 cwd: path.join(__dirname, '..')
             });
             
@@ -152,12 +200,11 @@ async function yoloRequest(endpoint, data = {}) {
 function startLocalSttHandler() {
     if (localSttProcess) return;
 
-    const pythonPath = 'python';
     const scriptPath = path.join(__dirname, '../python/local_stt.py');
-    
+
     console.log("Starting Local STT Process...");
     try {
-        localSttProcess = spawn(pythonPath, ['-u', scriptPath]);
+        localSttProcess = spawnPythonProcess('local_stt', scriptPath);
 
         localSttProcess.stdout.on('data', (data) => {
             const lines = data.toString().split('\n');
@@ -223,12 +270,11 @@ let piperPending = null;
 function startPiperHandler() {
     if (piperProcess) return;
 
-    const pythonPath = 'python';
     const scriptPath = path.join(__dirname, '../python/piper_tts.py');
-    
+
     console.log("Starting Piper TTS Process...");
     try {
-        piperProcess = spawn(pythonPath, ['-u', scriptPath]);
+        piperProcess = spawnPythonProcess('piper_tts', scriptPath);
 
         piperProcess.stdout.on('data', (data) => {
             const lines = data.toString().split('\n');
@@ -298,12 +344,11 @@ let ttsPending = null;
 function startKokoroHandler() {
     if (kokoroProcess) return;
 
-    const pythonPath = 'python';
     const scriptPath = path.join(__dirname, '../python/kokoro_tts.py');
-    
+
     console.log("Starting Kokoro TTS Process...");
     try {
-        kokoroProcess = spawn(pythonPath, ['-u', scriptPath]);
+        kokoroProcess = spawnPythonProcess('kokoro_tts', scriptPath);
 
         kokoroProcess.stdout.on('data', (data) => {
             const lines = data.toString().split('\n');
