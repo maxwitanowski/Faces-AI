@@ -1,0 +1,10 @@
+# YOLO Tracking Server Dependencies
+ultralytics>=8.0.0
+pillow>=9.0.0
+numpy>=1.21.0
+
+# Existing dependencies (for other Python scripts)
+# faster-whisper  # For local_whisper.py
+# piper-tts       # For piper_tts.py
+
+
