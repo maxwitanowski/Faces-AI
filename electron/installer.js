@@ -176,9 +176,13 @@ class FacesInstaller {
      */
     runCommand(command, args = [], options = {}) {
         return new Promise((resolve, reject) => {
-            const proc = spawn(command, args, {
+            // Quote the command if it contains spaces
+            const quotedCommand = command.includes(' ') ? `"${command}"` : command;
+
+            const proc = spawn(quotedCommand, args, {
                 ...options,
-                shell: true
+                shell: true,
+                windowsVerbatimArguments: true
             });
 
             let stdout = '';
@@ -311,7 +315,9 @@ class FacesInstaller {
         progressCallback({ step: 'venv', status: 'Creating virtual environment...' });
 
         if (!fs.existsSync(this.venvPath)) {
-            await this.runCommand(systemPython.command, ['-m', 'venv', this.venvPath]);
+            // Quote the venv path for Windows
+            const quotedVenvPath = `"${this.venvPath}"`;
+            await this.runCommand(systemPython.command, ['-m', 'venv', quotedVenvPath]);
         }
 
         // Upgrade pip
