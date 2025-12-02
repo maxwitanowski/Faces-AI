@@ -8,8 +8,10 @@ const Store = require('electron-store');
 const { randomUUID } = require('crypto');
 const fs = require('fs');
 const os = require('os');
+const { DependencyManager, DEPENDENCIES } = require('./dependencyManager');
 
 const store = new Store();
+const dependencyManager = new DependencyManager(store);
 
 let mainWindow;
 let pythonProcess = null;
@@ -621,6 +623,61 @@ ipcMain.handle('analyze-vision', async (event, { sessionId, prompt }) => {
 // Get current vision provider setting
 ipcMain.handle('get-vision-provider', () => {
     return { provider: appSettings.visionProvider || 'local' };
+});
+
+// ============================================
+// DEPENDENCY MANAGER HANDLERS
+// ============================================
+
+// Check if dependency setup is needed
+ipcMain.handle('deps-needs-setup', async () => {
+    return await dependencyManager.needsSetup();
+});
+
+// Get dependency status
+ipcMain.handle('deps-check-status', async () => {
+    const status = await dependencyManager.checkAllDependencies();
+    const prefs = dependencyManager.getPreferences();
+    return { status, preferences: prefs, dependencies: DEPENDENCIES };
+});
+
+// Set dependency preferences
+ipcMain.handle('deps-set-preferences', async (event, prefs) => {
+    dependencyManager.setPreferences(prefs);
+    return { success: true };
+});
+
+// Install selected dependencies
+ipcMain.handle('deps-install', async (event) => {
+    try {
+        const result = await dependencyManager.installSelectedDependencies((progress) => {
+            // Send progress updates to renderer
+            if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('deps-progress', progress);
+            }
+        });
+
+        if (result.success) {
+            dependencyManager.markSetupComplete();
+        }
+
+        return result;
+    } catch (err) {
+        console.error('[DependencyManager] Installation error:', err);
+        return { success: false, error: err.message };
+    }
+});
+
+// Skip dependency setup
+ipcMain.handle('deps-skip-setup', async () => {
+    dependencyManager.markSetupComplete();
+    return { success: true };
+});
+
+// Reset setup (for testing)
+ipcMain.handle('deps-reset', async () => {
+    dependencyManager.resetSetup();
+    return { success: true };
 });
 
 // ============================================

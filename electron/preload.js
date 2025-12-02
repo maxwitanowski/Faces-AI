@@ -71,6 +71,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateMemory: (id, content, category) => ipcRenderer.invoke('update-memory', { id, content, category }),
   deleteMemory: (id) => ipcRenderer.invoke('delete-memory', { id }),
   clearAllMemories: () => ipcRenderer.invoke('clear-all-memories'),
+
+  // Dependency Manager
+  depsNeedsSetup: () => ipcRenderer.invoke('deps-needs-setup'),
+  depsCheckStatus: () => ipcRenderer.invoke('deps-check-status'),
+  depsSetPreferences: (prefs) => ipcRenderer.invoke('deps-set-preferences', prefs),
+  depsInstall: () => ipcRenderer.invoke('deps-install'),
+  depsSkipSetup: () => ipcRenderer.invoke('deps-skip-setup'),
+  depsReset: () => ipcRenderer.invoke('deps-reset'),
+  onDepsProgress: (callback) => ipcRenderer.on('deps-progress', (event, data) => callback(data)),
+  removeDepsProgressListener: () => ipcRenderer.removeAllListeners('deps-progress'),
   
   // Web Search
   webSearch: (query, count) => ipcRenderer.invoke('web-search', { query, count }),

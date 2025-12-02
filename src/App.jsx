@@ -64,6 +64,7 @@ import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import FaceEditor from './FaceEditor';
+import DependencySetup from './DependencySetup';
 
 // Icons map (fallback)
 const icons = {
@@ -273,7 +274,8 @@ import CanvasWindow from './CanvasWindow';
 
 function App() {
   const [view, setView] = useState('menu');
-  
+  const [showDepSetup, setShowDepSetup] = useState(false);
+
   const [mode, setMode] = useState(() => {
       const params = new URLSearchParams(window.location.search);
       const urlMode = params.get('mode');
@@ -406,6 +408,12 @@ function App() {
         if (state.settings?.selectedInput) setSelectedInput(state.settings.selectedInput);
         if (state.settings?.selectedOutput) setSelectedOutput(state.settings.selectedOutput);
         setIsReady(true);
+
+        // Check if dependency setup is needed
+        const needsSetup = await window.electronAPI.depsNeedsSetup();
+        if (needsSetup) {
+          setShowDepSetup(true);
+        }
 
         // Listen for sessions updates from other windows (e.g., voice chat)
         window.electronAPI.onSessionsUpdated(({ sessions }) => {
@@ -1868,21 +1876,27 @@ function App() {
 
   // Chat View
   return (
+    <>
+    <DependencySetup
+      opened={showDepSetup}
+      onClose={() => setShowDepSetup(false)}
+      onComplete={() => setShowDepSetup(false)}
+    />
     <AppShell
       header={{ height: 64 }}
       navbar={{ width: 300, breakpoint: 'sm' }}
       padding="0"
-      styles={{ 
-        main: { backgroundColor: '#0a0a0f' }, 
-        header: { 
-          backgroundColor: '#0d0d14', 
+      styles={{
+        main: { backgroundColor: '#0a0a0f' },
+        header: {
+          backgroundColor: '#0d0d14',
           borderBottom: '1px solid rgba(255,255,255,0.06)',
           backdropFilter: 'blur(20px)'
-        }, 
-        navbar: { 
-          backgroundColor: '#0d0d14', 
-          borderRight: '1px solid rgba(255,255,255,0.06)' 
-        } 
+        },
+        navbar: {
+          backgroundColor: '#0d0d14',
+          borderRight: '1px solid rgba(255,255,255,0.06)'
+        }
       }}
     >
       <AppShell.Header p="sm">
@@ -2317,6 +2331,7 @@ function App() {
          </Box>
       </AppShell.Main>
     </AppShell>
+    </>
   );
 }
 
