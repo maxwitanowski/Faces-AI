@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faces AI Setup</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #12121a 100%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            -webkit-app-region: drag;
+        }
+
+        .header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .close-btn {
+            -webkit-app-region: no-drag;
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #888;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .content {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            -webkit-app-region: no-drag;
+        }
+
+        .step-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .step-desc {
+            color: #888;
+            margin-bottom: 24px;
+        }
+
+        .dependency-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .dependency-item {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .dependency-item:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+        .dependency-item.selected {
+            border-color: #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .dependency-item.installed {
+            opacity: 0.6;
+        }
+
+        .dep-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .dependency-item.selected .dep-checkbox {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+
+        .dep-checkbox svg {
+            width: 14px;
+            height: 14px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .dependency-item.selected .dep-checkbox svg {
+            opacity: 1;
+        }
+
+        .dep-info {
+            flex: 1;
+        }
+
+        .dep-name {
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dep-badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .dep-badge.recommended {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .dep-badge.optional {
+            background: rgba(255,255,255,0.1);
+            color: #888;
+        }
+
+        .dep-badge.installed {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .dep-desc {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .dep-size {
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .footer {
+            padding: 20px 24px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            -webkit-app-region: no-drag;
+        }
+
+        .total-size {
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: #888;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Installing state */
+        .installing-view {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .installing-view.active {
+            display: flex;
+        }
+
+        .selection-view.hidden {
+            display: none;
+        }
+
+        .progress-ring {
+            width: 120px;
+            height: 120px;
+            margin-bottom: 24px;
+        }
+
+        .progress-ring circle {
+            fill: none;
+            stroke-width: 8;
+            stroke-linecap: round;
+            transform: rotate(-90deg);
+            transform-origin: center;
+        }
+
+        .progress-ring .bg {
+            stroke: rgba(255,255,255,0.1);
+        }
+
+        .progress-ring .progress {
+            stroke: url(#gradient);
+            stroke-dasharray: 339.292;
+            stroke-dashoffset: 339.292;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        .progress-text {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .progress-status {
+            color: #888;
+            margin-bottom: 4px;
+        }
+
+        .progress-detail {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        /* Complete state */
+        .complete-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .complete-icon svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        /* Error state */
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 16px;
+            border-radius: 10px;
+            margin-top: 16px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">🎭</div>
+            <span class="logo-text">Faces AI Setup</span>
+        </div>
+        <button class="close-btn" onclick="closeWindow()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
+    </div>
+
+    <div class="content">
+        <!-- Selection View -->
+        <div class="selection-view" id="selectionView">
+            <h2 class="step-title">Choose AI Features</h2>
+            <p class="step-desc">Select which AI capabilities to install. These will be downloaded and configured automatically.</p>
+
+            <div class="dependency-list" id="dependencyList">
+                <!-- Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Installing View -->
+        <div class="installing-view" id="installingView">
+            <svg class="progress-ring" viewBox="0 0 120 120">
+                <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#3b82f6"/>
+                        <stop offset="100%" stop-color="#8b5cf6"/>
+                    </linearGradient>
+                </defs>
+                <circle class="bg" cx="60" cy="60" r="54"/>
+                <circle class="progress" id="progressCircle" cx="60" cy="60" r="54"/>
+            </svg>
+            <div class="progress-text" id="progressText">0%</div>
+            <div class="progress-status" id="progressStatus">Preparing installation...</div>
+            <div class="progress-detail" id="progressDetail"></div>
+            <div class="error-message" id="errorMessage" style="display: none;"></div>
+        </div>
+
+        <!-- Complete View -->
+        <div class="installing-view" id="completeView">
+            <div class="complete-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+            <div class="progress-text">All Set!</div>
+            <div class="progress-status">Faces AI is ready to use</div>
+        </div>
+    </div>
+
+    <div class="footer" id="footer">
+        <div class="total-size" id="totalSize">Total: ~0 MB</div>
+        <div class="btn-group">
+            <button class="btn btn-secondary" id="skipBtn" onclick="skipInstall()">Skip for now</button>
+            <button class="btn btn-primary" id="installBtn" onclick="startInstall()">Install Selected</button>
+        </div>
+    </div>
+
+    <script>
+        let status = null;
+        let preferences = {};
+
+        const depSizes = {
+            kokoro: 200,
+            whisper: 150,
+            yolo: 200,
+            piper: 80
+        };
+
+        async function init() {
+            status = await window.installerAPI.getStatus();
+            preferences = { ...status.preferences };
+
+            renderDependencies();
+            updateTotalSize();
+
+            // Listen for progress updates
+            window.installerAPI.onProgress(handleProgress);
+        }
+
+        function renderDependencies() {
+            const list = document.getElementById('dependencyList');
+            list.innerHTML = '';
+
+            for (const [key, dep] of Object.entries(status.dependencies)) {
+                const isInstalled = status.installed[key];
+                const isSelected = preferences[key];
+
+                const item = document.createElement('div');
+                item.className = `dependency-item ${isSelected ? 'selected' : ''} ${isInstalled ? 'installed' : ''}`;
+                item.onclick = () => toggleDependency(key);
+
+                item.innerHTML = `
+                    <div class="dep-checkbox">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
+                    </div>
+                    <div class="dep-info">
+                        <div class="dep-name">
+                            ${dep.name}
+                            ${isInstalled ? '<span class="dep-badge installed">Installed</span>' :
+                              (dep.recommended ? '<span class="dep-badge recommended">Recommended</span>' :
+                               '<span class="dep-badge optional">Optional</span>')}
+                        </div>
+                        <div class="dep-desc">${dep.description}</div>
+                    </div>
+                    <div class="dep-size">${dep.size}</div>
+                `;
+
+                list.appendChild(item);
+            }
+        }
+
+        function toggleDependency(key) {
+            if (status.installed[key]) return; // Can't toggle installed deps
+
+            preferences[key] = !preferences[key];
+            renderDependencies();
+            updateTotalSize();
+        }
+
+        function updateTotalSize() {
+            let total = 50; // Base app size
+            for (const [key, selected] of Object.entries(preferences)) {
+                if (selected && !status.installed[key]) {
+                    total += depSizes[key] || 0;
+                }
+            }
+            document.getElementById('totalSize').textContent = `Total: ~${total} MB`;
+        }
+
+        async function startInstall() {
+            // Check if anything to install
+            const toInstall = Object.entries(preferences)
+                .filter(([key, selected]) => selected && !status.installed[key]);
+
+            if (toInstall.length === 0) {
+                await window.installerAPI.skipInstall();
+                showComplete();
+                return;
+            }
+
+            // Show installing view
+            document.getElementById('selectionView').classList.add('hidden');
+            document.getElementById('installingView').classList.add('active');
+            document.getElementById('footer').style.display = 'none';
+
+            // Start installation
+            const result = await window.installerAPI.startInstall(preferences);
+
+            if (result.success) {
+                showComplete();
+            } else {
+                document.getElementById('errorMessage').textContent = result.error;
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        }
+
+        function handleProgress(data) {
+            const circle = document.getElementById('progressCircle');
+            const text = document.getElementById('progressText');
+            const statusEl = document.getElementById('progressStatus');
+            const detailEl = document.getElementById('progressDetail');
+
+            const percent = data.overall || 0;
+            const circumference = 339.292;
+            const offset = circumference - (percent / 100) * circumference;
+
+            circle.style.strokeDashoffset = offset;
+            text.textContent = `${percent}%`;
+            statusEl.textContent = data.status || 'Installing...';
+            detailEl.textContent = data.detail || '';
+        }
+
+        function showComplete() {
+            document.getElementById('installingView').classList.remove('active');
+            document.getElementById('completeView').classList.add('active');
+
+            // Close after 2 seconds
+            setTimeout(() => {
+                window.installerAPI.closeWindow();
+            }, 2000);
+        }
+
+        async function skipInstall() {
+            await window.installerAPI.skipInstall();
+            window.installerAPI.closeWindow();
+        }
+
+        function closeWindow() {
+            window.installerAPI.closeWindow();
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>

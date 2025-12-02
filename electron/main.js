@@ -9,9 +9,11 @@ const { randomUUID } = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const { DependencyManager, DEPENDENCIES } = require('./dependencyManager');
+const { FacesInstaller } = require('./installer');
 
 const store = new Store();
 const dependencyManager = new DependencyManager(store);
+const installer = new FacesInstaller(store);
 
 let mainWindow;
 let pythonProcess = null;
@@ -44,7 +46,7 @@ function getModelPath(modelName) {
 }
 
 /**
- * Spawn a Python process - uses bundled exe in production, python interpreter in dev
+ * Spawn a Python process - uses bundled exe in production, installer venv, or system python
  */
 function spawnPythonProcess(scriptName, scriptPath, options = {}) {
     const bundledExe = getBundledExePath(scriptName);
@@ -61,9 +63,19 @@ function spawnPythonProcess(scriptName, scriptPath, options = {}) {
             }
         });
     } else {
-        // Development: use Python interpreter
-        console.log(`[${scriptName}] Using Python interpreter`);
-        return spawn('python', ['-u', scriptPath], options);
+        // Use installer's Python if available, otherwise system Python
+        const pythonPath = installer.getPythonPath();
+        const modelsPath = installer.getModelsPath();
+        console.log(`[${scriptName}] Using Python: ${pythonPath}`);
+        return spawn(pythonPath, ['-u', scriptPath], {
+            ...options,
+            env: {
+                ...process.env,
+                MODEL_PATH: path.join(modelsPath, 'yolo11n.pt'),
+                MODELS_PATH: modelsPath,
+                ...options.env
+            }
+        });
     }
 }
 
@@ -677,6 +689,36 @@ ipcMain.handle('deps-skip-setup', async () => {
 // Reset setup (for testing)
 ipcMain.handle('deps-reset', async () => {
     dependencyManager.resetSetup();
+    return { success: true };
+});
+
+// ============================================
+// INSTALLER HANDLERS
+// ============================================
+
+// Get installer status
+ipcMain.handle('installer-get-status', async () => {
+    return installer.getStatus();
+});
+
+// Start installation
+ipcMain.handle('installer-start', async (event, preferences) => {
+    return await installer.runInstallation(preferences, (progress) => {
+        installer.sendProgress(progress);
+    });
+});
+
+// Skip installation
+ipcMain.handle('installer-skip', async () => {
+    store.set('installerComplete', true);
+    return { success: true };
+});
+
+// Close installer window
+ipcMain.handle('installer-close', async () => {
+    if (installer.installWindow && !installer.installWindow.isDestroyed()) {
+        installer.installWindow.close();
+    }
     return { success: true };
 });
 
@@ -1522,12 +1564,30 @@ Return ONLY valid JSON, no explanation. Example: {"warmth": 0.5, "energy": 0.3, 
     }
 });
 
-app.whenReady().then(() => {
-  createWindow();
-  startKokoroHandler(); 
-  startPiperHandler(); 
-  startLocalSttHandler(); // Enable Local STT
-  // startPythonHandler(); // Temporarily disabled as per user request
+app.whenReady().then(async () => {
+  // Check if installer needs to run
+  if (installer.needsSetup()) {
+    console.log('[Installer] First run detected, showing setup wizard...');
+    const installerWindow = installer.createInstallerWindow();
+
+    installerWindow.on('closed', () => {
+      // After installer closes, start main app if setup complete
+      if (store.get('installerComplete', false)) {
+        createWindow();
+        startKokoroHandler();
+        startPiperHandler();
+        startLocalSttHandler();
+      } else {
+        app.quit();
+      }
+    });
+  } else {
+    // Normal startup
+    createWindow();
+    startKokoroHandler();
+    startPiperHandler();
+    startLocalSttHandler(); // Enable Local STT
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
