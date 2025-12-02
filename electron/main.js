@@ -352,6 +352,7 @@ function processNextPiperTTS() {
 }
 
 let kokoroProcess = null;
+let kokoroReady = false;
 const ttsQueue = [];
 let ttsPending = null;
 
@@ -382,12 +383,23 @@ function startKokoroHandler() {
         });
 
         kokoroProcess.stderr.on('data', (data) => {
-            console.error(`[Kokoro] ${data}`);
+            const output = data.toString();
+            console.error(`[Kokoro] ${output}`);
+            // Detect when Kokoro TTS is ready
+            if (output.includes('Kokoro TTS Ready')) {
+                kokoroReady = true;
+                console.log('[Kokoro] TTS is now ready');
+                // Notify all renderer windows
+                BrowserWindow.getAllWindows().forEach(win => {
+                    win.webContents.send('kokoro-ready', true);
+                });
+            }
         });
 
         kokoroProcess.on('close', (code) => {
             console.log(`Kokoro process exited with code ${code}`);
             kokoroProcess = null;
+            kokoroReady = false;
             if (ttsPending) {
                 ttsPending.reject({ success: false, error: "Process exited unexpectedly" });
                 ttsPending = null;
@@ -635,6 +647,11 @@ ipcMain.handle('analyze-vision', async (event, { sessionId, prompt }) => {
 // Get current vision provider setting
 ipcMain.handle('get-vision-provider', () => {
     return { provider: appSettings.visionProvider || 'local' };
+});
+
+// Check if Kokoro TTS is ready
+ipcMain.handle('get-kokoro-ready', () => {
+    return { ready: kokoroReady };
 });
 
 // ============================================
@@ -1368,7 +1385,7 @@ function createWindow() {
 
   // mainWindow.webContents.openDevTools();
 
-  const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5173';
+  const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5199';
 
   if (process.env.npm_lifecycle_event === 'dev') {
      mainWindow.loadURL(startUrl);
@@ -1376,7 +1393,7 @@ function createWindow() {
      const prodPath = path.join(__dirname, '../dist/index.html');
      mainWindow.loadFile(prodPath).catch(err => {
          console.error("Failed to load production file:", err);
-         mainWindow.loadURL('http://localhost:5173');
+         mainWindow.loadURL('http://localhost:5199');
      });
   }
 }
@@ -1395,7 +1412,7 @@ ipcMain.handle('open-voice-window', (event, sessionId) => {
         title: "Voice Chat"
     });
 
-    const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5173';
+    const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5199';
     const sessionParam = `?mode=voice&sessionId=${sessionId}`;
 
     if (process.env.npm_lifecycle_event === 'dev') {
@@ -1435,7 +1452,7 @@ ipcMain.handle('open-canvas-window', (event, sessionId) => {
         delete canvasWindows[sessionId];
     });
 
-    const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5173';
+    const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5199';
     const sessionParam = `?mode=canvas&sessionId=${sessionId}`;
 
     if (process.env.npm_lifecycle_event === 'dev') {
@@ -1471,7 +1488,7 @@ ipcMain.handle('open-face-editor', () => {
         faceEditorWindow = null;
     });
 
-    const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5173';
+    const startUrl = process.env.ELECTRON_START_URL || 'http://localhost:5199';
     const editorParam = `?mode=face-editor`;
 
     if (process.env.npm_lifecycle_event === 'dev') {
@@ -2352,7 +2369,22 @@ async function handleLocalStreaming(event, sessionId, messages, model, baseUrl, 
 ipcMain.handle('send-message', async (event, { sessionId, message, isVoiceSession = false, useVision = false, syncToChat = true }) => {
   const session = sessions[sessionId];
   if (!session) return { success: false, error: 'Session not found' };
-  
+
+  // Wait for Kokoro TTS to be ready if this is a voice session using Kokoro
+  if (isVoiceSession && appSettings.ttsProvider === 'kokoro' && !kokoroReady) {
+    console.log('[send-message] Waiting for Kokoro TTS to be ready...');
+    const maxWait = 60000; // 60 seconds max
+    const startTime = Date.now();
+    while (!kokoroReady && (Date.now() - startTime) < maxWait) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    if (!kokoroReady) {
+      console.warn('[send-message] Kokoro TTS did not become ready in time');
+    } else {
+      console.log('[send-message] Kokoro TTS is now ready, proceeding with message');
+    }
+  }
+
   // If this is a voice session and syncToChat is enabled, messages will be saved
   // to the session history and persisted
   const shouldSaveToHistory = !isVoiceSession || syncToChat;

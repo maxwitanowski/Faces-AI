@@ -58,6 +58,10 @@ const VoiceChatWindow = () => {
     const [visionProvider, setVisionProvider] = useState('local');
     const visionIntervalRef = useRef(null);
     const VISION_ANALYSIS_INTERVAL = 3000;
+
+    // Kokoro TTS Ready State
+    const [kokoroReady, setKokoroReady] = useState(false);
+    const [ttsProvider, setTtsProvider] = useState('kokoro');
     
     // Constants
     const SILENCE_THRESHOLD = 30;
@@ -372,6 +376,22 @@ const VoiceChatWindow = () => {
         };
     }, []);
 
+    // Listen for Kokoro TTS ready events
+    useEffect(() => {
+        if (window.electronAPI?.onKokoroReady) {
+            window.electronAPI.onKokoroReady((ready) => {
+                console.log('[VoiceChat] Kokoro TTS ready:', ready);
+                setKokoroReady(ready);
+            });
+        }
+
+        return () => {
+            if (window.electronAPI?.removeKokoroReadyListener) {
+                window.electronAPI.removeKokoroReadyListener();
+            }
+        };
+    }, []);
+
     const loadDevices = async () => {
         try {
             await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -394,12 +414,26 @@ const VoiceChatWindow = () => {
             setSelectedInput(inputDevices[0].value);
         }
         setVisionProvider(savedSettings.visionProvider || 'local');
+        setTtsProvider(savedSettings.ttsProvider || 'kokoro');
         // Load QoL settings
         setShowWaveform(savedSettings.showWaveform ?? false);
         setPushToTalk(savedSettings.pushToTalk ?? false);
         setShowTranscriptionPreview(savedSettings.showTranscriptionPreview ?? false);
         setSyncVoiceToChat(savedSettings.syncVoiceToChat ?? true);
         setAllowInterruption(savedSettings.allowInterruption ?? false);
+
+        // Check Kokoro TTS ready state
+        if (savedSettings.ttsProvider === 'kokoro') {
+            try {
+                const kokoroStatus = await window.electronAPI.getKokoroReady();
+                setKokoroReady(kokoroStatus.ready);
+            } catch (e) {
+                console.error('Failed to check Kokoro status:', e);
+            }
+        } else {
+            // If not using Kokoro, we don't need to wait
+            setKokoroReady(true);
+        }
     };
 
     const handleInputChange = (val) => {
@@ -582,24 +616,48 @@ const VoiceChatWindow = () => {
     };
 
     const sendTranscribedMessage = async (text) => {
+        // Wait for Kokoro TTS to be ready if using Kokoro
+        if (ttsProvider === 'kokoro' && !kokoroReady) {
+            setStatus('Waiting for TTS...');
+            // Poll for Kokoro ready status
+            let attempts = 0;
+            const maxAttempts = 60; // 30 seconds max wait
+            while (!kokoroReady && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+                try {
+                    const status = await window.electronAPI.getKokoroReady();
+                    if (status.ready) {
+                        setKokoroReady(true);
+                        break;
+                    }
+                } catch (e) {
+                    console.error('Error checking Kokoro status:', e);
+                }
+                attempts++;
+            }
+            if (attempts >= maxAttempts) {
+                console.warn('Kokoro TTS did not become ready in time, proceeding anyway');
+            }
+        }
+
         setStatus('Thinking...');
-        
-        sendFaceControl({ 
+
+        sendFaceControl({
             warmth: 0.15, energy: -0.1, openness: -0.15, positivity: 0.05,
-            intensity: 0.5, isThinking: true, isTalking: false 
+            intensity: 0.5, isThinking: true, isTalking: false
         });
-        
+
         if (cameraEnabled) {
             const frame = captureFrame();
             if (frame && window.electronAPI?.storeFrame) {
                 await window.electronAPI.storeFrame(sessionId, frame);
             }
         }
-        
-        window.electronAPI.sendMessage({ 
-            sessionId, 
-            message: text, 
-            isVoiceSession: true, 
+
+        window.electronAPI.sendMessage({
+            sessionId,
+            message: text,
+            isVoiceSession: true,
             useVision: cameraEnabled,
             syncToChat: syncVoiceToChat
         });

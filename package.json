@@ -5,7 +5,7 @@
   "description": "Faces AI, The App That Gives Your AI A Face",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "dev": "concurrently \"vite\" \"wait-on tcp:5199 && electron .\"",
     "build": "vite build",
     "start": "electron .",
     "build:python": "python build_python.py",

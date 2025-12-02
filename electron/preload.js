@@ -33,7 +33,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   storeFrame: (sessionId, frame) => ipcRenderer.invoke('store-frame', { sessionId, frame }),
   analyzeVision: (sessionId, prompt) => ipcRenderer.invoke('analyze-vision', { sessionId, prompt }),
   getVisionProvider: () => ipcRenderer.invoke('get-vision-provider'),
-  
+
+  // Kokoro TTS Ready Status
+  getKokoroReady: () => ipcRenderer.invoke('get-kokoro-ready'),
+  onKokoroReady: (callback) => ipcRenderer.on('kokoro-ready', (event, ready) => callback(ready)),
+  removeKokoroReadyListener: () => ipcRenderer.removeAllListeners('kokoro-ready'),
+
   // YOLO Tracking
   yoloStart: () => ipcRenderer.invoke('yolo-start'),
   yoloStop: () => ipcRenderer.invoke('yolo-stop'),

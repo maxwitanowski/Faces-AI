@@ -10,8 +10,8 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    port: 5173,
-    strictPort: true,
+    port: 5199,
+    strictPort: false,
   }
 })
 
